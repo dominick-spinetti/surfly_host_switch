@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Surfly Session Launch</title>
+  <title>Start Co-Browse Session</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -21,10 +21,11 @@
       border: 1px solid #2a3040;
       border-radius: 12px;
       padding: 40px;
-      width: 360px;
+      width: 380px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 24px;
+      text-align: center;
     }
 
     h1 {
@@ -33,33 +34,15 @@
       color: #e8eaf0;
     }
 
-    label {
-      display: block;
-      font-size: 11px;
-      color: #7a8299;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    select {
-      width: 100%;
-      background: #141720;
-      border: 1px solid #2a3040;
-      border-radius: 6px;
-      padding: 9px 12px;
-      color: #e8eaf0;
+    p {
       font-size: 13px;
-      font-family: inherit;
-      outline: none;
-      cursor: pointer;
+      color: #7a8299;
+      line-height: 1.6;
     }
-
-    select:focus { border-color: #4f7cff; }
 
     .btn {
       width: 100%;
-      padding: 12px;
+      padding: 13px;
       background: #4f7cff;
       color: #fff;
       border: none;
@@ -74,31 +57,76 @@
     .btn:hover { background: #3d6be0; }
     .btn:disabled { background: #1d2d5a; color: #4a5a8a; cursor: not-allowed; }
 
+    /* PIN display — hidden until session starts */
+    .pin-block {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      background: #1e2330;
+      border: 1px solid #2a3040;
+      border-radius: 8px;
+      padding: 24px 20px;
+    }
+
+    .pin-block.visible { display: flex; }
+
+    .pin-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #7a8299;
+    }
+
+    .pin-digits {
+      font-size: 52px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: #4f7cff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pin-instruction {
+      font-size: 13px;
+      color: #7a8299;
+      line-height: 1.5;
+    }
+
+    .pin-instruction strong {
+      color: #e8eaf0;
+      font-weight: 500;
+    }
+
     .status {
       font-size: 12px;
       color: #7a8299;
-      text-align: center;
-      min-height: 18px;
+      min-height: 16px;
     }
 
-    .status.active { color: #2dbd7a; }
-    .status.error  { color: #e24b4a; }
+    .status.active  { color: #2dbd7a; }
+    .status.warn    { color: #f0a432; }
+    .status.error   { color: #e24b4a; }
+    .status.host    { color: #a78bfa; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h1>Start Cobrowse Session</h1>
-
   <div>
-    <label>Widget Key</label>
-    <select id="widget-key">
-      <option value="">— Select —</option>
-      <option value="d01c1280d1f64e04b6303b49802e209c">ONE Demo</option>
-    </select>
+    <h1>Start Co-Browse Session</h1>
   </div>
 
+  <p>Click the button below to start a session. Share the PIN with your agent to let them join.</p>
+
   <button class="btn" id="btn-start" onclick="launch()">Start Session</button>
+
+  <div class="pin-block" id="pin-block">
+    <div class="pin-label">Share this PIN with your agent</div>
+    <div class="pin-digits" id="pin-display">—</div>
+    <div class="pin-instruction">
+      Read this PIN to your agent.<br/>
+      They will join and take over <strong>automatically</strong>.
+    </div>
+  </div>
 
   <div class="status" id="status"></div>
 </div>
@@ -111,13 +139,9 @@
   }
 
   function launch() {
-    const widgetKey = document.getElementById('widget-key').value;
-    if (!widgetKey) { setStatus('Please select a widget key.', 'error'); return; }
-
     document.getElementById('btn-start').disabled = true;
-    setStatus('Loading Surfly...');
+    setStatus('Loading...');
 
-    // Set up stub so surfly.js has something to augment on load
     window.Surfly = window.Surfly || {
       init:    function () { window.Surfly.q = arguments; },
       on:      function () { window.Surfly.e = (window.Surfly.e || []).concat([arguments]); },
@@ -127,7 +151,7 @@
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://surfly.com/surfly.js';
-    script.onload = function () { init(widgetKey); };
+    script.onload  = function () { init(); };
     script.onerror = function () {
       setStatus('Failed to load Surfly SDK.', 'error');
       document.getElementById('btn-start').disabled = false;
@@ -135,27 +159,60 @@
     document.head.appendChild(script);
   }
 
-  function init(widgetKey) {
-    Surfly.init({ widget_key: widgetKey }, function (e) {
+  function init() {
+    Surfly.init({ widget_key: 'd01c1280d1f64e04b6303b49802e209c' }, function (e) {
       if (!e.success) {
-        setStatus('Init failed: ' + (e.errorMsg || 'unknown error'), 'error');
+        setStatus('Init failed: ' + (e.errorMsg || 'unknown'), 'error');
         document.getElementById('btn-start').disabled = false;
         return;
       }
 
       if (Surfly.isInsideSession) return;
 
-      setStatus('Starting session...');
+      const session = Surfly.session({
+        non_hosts_can_open_tabs: false,
+        hide_session_ui:         true
+      });
 
-      const session = Surfly.session({ non_hosts_can_open_tabs: false });
+      // PIN becomes available at session_created / session_queued
+      function showPin(sess) {
+        const pin = sess.pin;
+        if (!pin) return;
+        document.getElementById('pin-display').textContent = pin;
+        document.getElementById('pin-block').classList.add('visible');
+        document.getElementById('btn-start').style.display = 'none';
+        setStatus('Waiting for agent to join...', 'warn');
+      }
 
-      session.on('session_started', function () {
-        setStatus('Session active.', 'active');
+      session.on('session_created', function (sess) { showPin(sess); });
+      session.on('session_queued',  function (sess) { showPin(sess); });
+      session.on('session_started', function (sess) { showPin(sess); });
+
+      // When the agent joins, immediately transfer host to them
+      session.on('participant_joined', function (sess, event) {
+        setStatus('Agent joined — transferring control...', 'warn');
+        try {
+          sess.makeHost(event.clientIndex);
+        } catch (err) {
+          setStatus('makeHost failed: ' + err.message, 'error');
+        }
+      });
+
+      // Confirm the transfer completed
+      session.on('host_changed', function (sess, event) {
+        if (!event.gained) {
+          setStatus('Agent is now in control.', 'host');
+          document.getElementById('pin-instruction') &&
+            (document.querySelector('.pin-instruction').textContent = 'Your agent has joined and is now in control.');
+        }
       });
 
       session.on('session_ended', function () {
         setStatus('Session ended.');
+        document.getElementById('pin-block').classList.remove('visible');
+        document.getElementById('btn-start').style.display = 'block';
         document.getElementById('btn-start').disabled = false;
+        document.getElementById('pin-display').textContent = '—';
       });
 
       session.on('error', function (sess, ev) {
