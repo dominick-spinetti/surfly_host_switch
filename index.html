@@ -225,13 +225,18 @@
         }, 800);
       }
 
+      // viewer_joined fires BEFORE participant_joined and has no agent_token
+      // in userData yet — triggering makeHost here causes it to fail because
+      // the participant isn't fully registered. We log it but do NOT transfer.
       session.on('viewer_joined', function (sess, event) {
-        console.log('[Surfly] viewer_joined — clientIndex:', event.clientIndex, 'count:', event.count);
-        transferHost(event.clientIndex);
+        console.log('[Surfly] viewer_joined — clientIndex:', event.clientIndex, '— waiting for participant_joined before makeHost');
       });
 
+      // participant_joined fires after viewer_joined with full userData including
+      // agent_token — this is the correct event to call makeHost from.
       session.on('participant_joined', function (sess, event) {
-        console.log('[Surfly] participant_joined — clientIndex:', event.clientIndex, 'userData:', event.userData);
+        const hasToken = !!(event.userData && event.userData.agent_token);
+        console.log('[Surfly] participant_joined — clientIndex:', event.clientIndex, 'agent_token present:', hasToken, 'userData:', event.userData);
         transferHost(event.clientIndex);
       });
 
