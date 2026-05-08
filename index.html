@@ -170,7 +170,8 @@
       if (Surfly.isInsideSession) return;
 
       const session = Surfly.session({
-        non_hosts_can_open_tabs: false
+        non_hosts_can_open_tabs:  false,
+        host_switching_allowed:   true
       });
 
       // PIN becomes available at session_created / session_queued
@@ -205,8 +206,10 @@
 
         setTimeout(function () {
           try {
-            console.log('[Surfly] calling makeHost(' + clientIndex + ')');
+            console.log('[Surfly] calling makeHost(' + clientIndex + ') — host_switching_allowed: true');
+            console.log('[Surfly] session object keys:', Object.keys(session));
             session.makeHost(clientIndex);
+            console.log('[Surfly] makeHost(' + clientIndex + ') — no immediate error thrown');
           } catch (err) {
             console.error('[Surfly] makeHost error:', err.message);
             setStatus('Transfer error: ' + err.message, 'error');
