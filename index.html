@@ -420,7 +420,7 @@
           <label>Widget Key</label>
           <select id="widget-key" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px 10px; color:var(--text); font-family:var(--mono); font-size:12px; outline:none; cursor:pointer;">
             <option value="">— Select a widget key —</option>
-            <option value="d01c1280d1f64e04b6303b49802e209c">VidantaWorld Demo · d01c1280...</option>
+            <option value="d01c1280d1f64e04b6303b49802e209c">ONE Demo · d01c1280...</option>
           </select>
         </div>
         <div>
@@ -739,12 +739,36 @@
 
       // ── Register ALL documented session events for full visibility ─────
 
+      // Helper: populate all UI fields from a session object.
+      // Called from both session_created and session_started since
+      // in embedded (#surfly-frame) mode, session_started may not fire.
+      function populateSessionUI(sess, source) {
+        const followerLink = sess.followerLink;
+        const sessionId    = sess.formattedId || sess.sessionId || 'active';
+
+        log(`  [${source}] populateSessionUI — followerLink: ${followerLink}`, 'debug');
+        log(`  [${source}] populateSessionUI — sessionId: ${sessionId}`, 'debug');
+
+        if (followerLink) {
+          document.getElementById('follower-link').value = followerLink;
+        } else {
+          log(`  WARNING: followerLink is empty/undefined at ${source}`, 'warn');
+        }
+
+        document.getElementById('metric-session').textContent = sessionId;
+        setStatus('Session <strong>active</strong> — waiting for participants', 'active');
+        document.getElementById('btn-end').disabled = false;
+        renderParticipants();
+      }
+
       surflySession.on('session_created', function (sess) {
-        log('EVENT session_created — session object exists in Surfly system', 'success');
+        log('EVENT session_created — session registered in Surfly system', 'success');
         log(`  sess.sessionId: ${sess.sessionId}`, 'debug');
         log(`  sess.formattedId: ${sess.formattedId}`, 'debug');
         log(`  sess.followerLink: ${sess.followerLink}`, 'debug');
         log(`  sess.leaderLink: ${sess.leaderLink}`, 'debug');
+        // Populate UI here — session_started may not fire in embedded mode
+        populateSessionUI(sess, 'session_created');
       });
 
       surflySession.on('session_queued', function (sess) {
@@ -753,24 +777,12 @@
       });
 
       surflySession.on('session_started', function (sess) {
-        log('EVENT session_started — session window loaded, co-browse active', 'success');
+        log('EVENT session_started — session window loaded (fired in addition to session_created)', 'success');
         log(`  sess.followerLink: ${sess.followerLink}`, 'debug');
         log(`  sess.leaderLink: ${sess.leaderLink}`, 'debug');
         log(`  sess.sessionId: ${sess.sessionId}`, 'debug');
         log(`  sess.formattedId: ${sess.formattedId}`, 'debug');
-
-        const followerLink = sess.followerLink;
-        document.getElementById('follower-link').value = followerLink || '(not available)';
-        document.getElementById('metric-session').textContent =
-          sess.formattedId || sess.sessionId || 'active';
-
-        if (!followerLink) {
-          log('  WARNING: followerLink is empty/undefined on session_started', 'warn');
-        }
-
-        setStatus('Session <strong>active</strong> — waiting for participants', 'active');
-        document.getElementById('btn-end').disabled = false;
-        renderParticipants();
+        populateSessionUI(sess, 'session_started');
       });
 
       surflySession.on('session_loaded', function (sess) {
