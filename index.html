@@ -204,12 +204,16 @@
         setStatus('Agent joined — transferring control...', 'warn');
         console.log('[Surfly] transferHost — clientIndex:', clientIndex, '— waiting 800ms before makeHost...');
 
+        // viewer_joined fires with clientIndex 1 (queue slot) but the agent
+        // actually lands at index 2 in the session — confirmed by UI showing
+        // "participant 2" even though the event reports clientIndex: 1.
+        // Testing makeHost(2) directly to confirm the index mismatch theory.
+        const targetIndex = 2;
         setTimeout(function () {
           try {
-            console.log('[Surfly] calling makeHost(' + clientIndex + ') — host_switching_allowed: true');
-            console.log('[Surfly] session object keys:', Object.keys(session));
-            session.makeHost(clientIndex);
-            console.log('[Surfly] makeHost(' + clientIndex + ') — no immediate error thrown');
+            console.log('[Surfly] calling makeHost(' + targetIndex + ') — bypassing event clientIndex (' + clientIndex + ')');
+            session.makeHost(targetIndex);
+            console.log('[Surfly] makeHost(' + targetIndex + ') — no immediate error thrown');
           } catch (err) {
             console.error('[Surfly] makeHost error:', err.message);
             setStatus('Transfer error: ' + err.message, 'error');
