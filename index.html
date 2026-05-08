@@ -187,22 +187,46 @@
       session.on('session_queued',  function (sess) { showPin(sess); });
       session.on('session_started', function (sess) { showPin(sess); });
 
-      // When the agent joins, immediately transfer host to them
-      session.on('participant_joined', function (sess, event) {
+      // Transfer host to whoever joins — covers both join paths.
+      // participant_joined fires for participants, viewer_joined for followers
+      // who join via PIN or follower link. Docs point to makeHost() for
+      // participant_joined and giveControl() for viewer_joined — trying both.
+      function transferHost(sess, clientIndex) {
         setStatus('Agent joined — transferring control...', 'warn');
+        console.log('[Surfly] transferHost called — clientIndex:', clientIndex);
         try {
-          sess.makeHost(event.clientIndex);
+          if (typeof session.makeHost === 'function') {
+            console.log('[Surfly] calling makeHost(' + clientIndex + ')');
+            session.makeHost(clientIndex);
+          } else {
+            console.warn('[Surfly] makeHost not available on session object');
+          }
+          if (typeof session.giveControl === 'function') {
+            console.log('[Surfly] calling giveControl(' + clientIndex + ')');
+            session.giveControl(clientIndex);
+          }
         } catch (err) {
-          setStatus('makeHost failed: ' + err.message, 'error');
+          console.error('[Surfly] transfer error:', err.message);
+          setStatus('Transfer error: ' + err.message, 'error');
         }
+      }
+
+      session.on('participant_joined', function (sess, event) {
+        console.log('[Surfly] participant_joined — clientIndex:', event.clientIndex, 'userData:', event.userData);
+        transferHost(sess, event.clientIndex);
       });
 
-      // Confirm the transfer completed
+      session.on('viewer_joined', function (sess, event) {
+        console.log('[Surfly] viewer_joined — clientIndex:', event.clientIndex, 'count:', event.count);
+        transferHost(sess, event.clientIndex);
+      });
+
+      // Confirm transfer
       session.on('host_changed', function (sess, event) {
+        console.log('[Surfly] host_changed — to:', event.to, 'gained:', event.gained, 'myIndex:', event.myIndex);
         if (!event.gained) {
           setStatus('Agent is now in control.', 'host');
-          document.getElementById('pin-instruction') &&
-            (document.querySelector('.pin-instruction').textContent = 'Your agent has joined and is now in control.');
+          document.querySelector('.pin-instruction').textContent = 'Your agent has joined and is now in control.';
         }
       });
 
@@ -215,6 +239,7 @@
       });
 
       session.on('error', function (sess, ev) {
+        console.error('[Surfly] session error:', ev);
         setStatus('Error: ' + (ev.reason || 'unknown'), 'error');
         document.getElementById('btn-start').disabled = false;
       });
