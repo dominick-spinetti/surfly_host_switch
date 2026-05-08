@@ -187,38 +187,42 @@
       session.on('session_queued',  function (sess) { showPin(sess); });
       session.on('session_started', function (sess) { showPin(sess); });
 
-      // Transfer host to whoever joins — covers both join paths.
-      // participant_joined fires for participants, viewer_joined for followers
-      // who join via PIN or follower link. Docs point to makeHost() for
-      // participant_joined and giveControl() for viewer_joined — trying both.
-      function transferHost(sess, clientIndex) {
+      // Guard prevents double-firing since both viewer_joined AND
+      // participant_joined fire for the same person joining via PIN.
+      // Delay gives Surfly time to register the participant internally
+      // before makeHost() is called — calling it immediately throws
+      // "Client index N not found in participants".
+      let hostTransferred = false;
+
+      function transferHost(clientIndex) {
+        if (hostTransferred) {
+          console.log('[Surfly] transferHost skipped — already transferred');
+          return;
+        }
+        hostTransferred = true;
         setStatus('Agent joined — transferring control...', 'warn');
-        console.log('[Surfly] transferHost called — clientIndex:', clientIndex);
-        try {
-          if (typeof session.makeHost === 'function') {
+        console.log('[Surfly] transferHost — clientIndex:', clientIndex, '— waiting 800ms before makeHost...');
+
+        setTimeout(function () {
+          try {
             console.log('[Surfly] calling makeHost(' + clientIndex + ')');
             session.makeHost(clientIndex);
-          } else {
-            console.warn('[Surfly] makeHost not available on session object');
+          } catch (err) {
+            console.error('[Surfly] makeHost error:', err.message);
+            setStatus('Transfer error: ' + err.message, 'error');
+            hostTransferred = false;
           }
-          if (typeof session.giveControl === 'function') {
-            console.log('[Surfly] calling giveControl(' + clientIndex + ')');
-            session.giveControl(clientIndex);
-          }
-        } catch (err) {
-          console.error('[Surfly] transfer error:', err.message);
-          setStatus('Transfer error: ' + err.message, 'error');
-        }
+        }, 800);
       }
-
-      session.on('participant_joined', function (sess, event) {
-        console.log('[Surfly] participant_joined — clientIndex:', event.clientIndex, 'userData:', event.userData);
-        transferHost(sess, event.clientIndex);
-      });
 
       session.on('viewer_joined', function (sess, event) {
         console.log('[Surfly] viewer_joined — clientIndex:', event.clientIndex, 'count:', event.count);
-        transferHost(sess, event.clientIndex);
+        transferHost(event.clientIndex);
+      });
+
+      session.on('participant_joined', function (sess, event) {
+        console.log('[Surfly] participant_joined — clientIndex:', event.clientIndex, 'userData:', event.userData);
+        transferHost(event.clientIndex);
       });
 
       // Confirm transfer
