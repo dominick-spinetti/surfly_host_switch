@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Surfly Host Switch Demo</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --bg-surface: #181c25;
+      --bg-card: #1e2330;
+      --bg-input: #141720;
+      --border: #2a3040;
+      --border-accent: #3b4560;
+      --text: #e8eaf0;
+      --text-muted: #7a8299;
+      --text-dim: #4a5270;
+      --accent: #4f7cff;
+      --accent-dim: #1d2d5a;
+      --success: #2dbd7a;
+      --success-dim: #0d2e1e;
+      --warn: #f0a432;
+      --warn-dim: #2e2008;
+      --danger: #e24b4a;
+      --danger-dim: #2e1010;
+      --host-color: #a78bfa;
+      --host-dim: #1e1535;
+      --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-surface);
+    }
+
+    .header-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    header h1 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      text-transform: uppercase;
+    }
+
+    .header-tag {
+      font-size: 11px;
+      font-family: var(--mono);
+      background: var(--accent-dim);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: auto;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      flex: 1;
+      gap: 0;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--border);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      background: var(--bg-surface);
+    }
+
+    .main {
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      letter-spacing: 0.03em;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      border-radius: 6px;
+      border: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-primary:hover { background: #3d6be0; }
+    .btn-primary:disabled { background: var(--accent-dim); color: var(--text-muted); cursor: not-allowed; }
+
+    .btn-danger {
+      background: var(--danger-dim);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-danger:hover { background: #3a1414; }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    .btn-give-host {
+      background: var(--host-dim);
+      color: var(--host-color);
+      border: 1px solid var(--host-color);
+    }
+
+    .btn-give-host:hover { background: #2a1d4a; }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--bg-input);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    .status-dot.active { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.warn { background: var(--warn); }
+
+    .status-text { font-size: 12px; color: var(--text-muted); }
+    .status-text strong { color: var(--text); font-weight: 500; }
+
+    .link-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .link-row input { flex: 1; }
+
+    .btn-copy {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 7px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .btn-copy:hover { border-color: var(--accent); color: var(--accent); }
+
+    .participants-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 80px;
+    }
+
+    .participant-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: border-color 0.2s;
+    }
+
+    .participant-row.is-host {
+      border-color: var(--host-color);
+      background: var(--host-dim);
+    }
+
+    .p-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .p-avatar.host-avatar {
+      background: var(--host-dim);
+      color: var(--host-color);
+    }
+
+    .p-info { flex: 1; }
+    .p-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .p-meta { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+
+    .host-badge {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: var(--host-dim);
+      color: var(--host-color);
+      border: 1px solid var(--host-color);
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+
+    .log-container {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 260px;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-entry {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+
+    .log-entry:hover { background: rgba(255,255,255,0.03); }
+
+    .log-time { color: var(--text-dim); flex-shrink: 0; }
+    .log-event { color: var(--accent); flex-shrink: 0; min-width: 160px; }
+    .log-event.ev-host { color: var(--host-color); }
+    .log-event.ev-joined { color: var(--success); }
+    .log-event.ev-left { color: var(--danger); }
+    .log-event.ev-started { color: var(--warn); }
+    .log-data { color: var(--text-muted); word-break: break-all; }
+
+    .top-row {
+      display: flex;
+      gap: 16px;
+    }
+
+    .top-row .card { flex: 1; }
+
+    .metric {
+      font-size: 26px;
+      font-weight: 600;
+      font-family: var(--mono);
+      margin-top: 4px;
+    }
+
+    .metric.m-accent { color: var(--accent); }
+    .metric.m-host { color: var(--host-color); }
+    .metric.m-success { color: var(--success); }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 4px 0;
+    }
+
+    /* code block for the snippet */
+    .code-block {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.8;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .c-kw { color: #bb86fc; }
+    .c-fn { color: #4fc3f7; }
+    .c-str { color: #a5d6a7; }
+    .c-cm { color: var(--text-dim); font-style: italic; }
+    .c-ev { color: var(--warn); }
+
+    #surfly-init-snippet { display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-dot"></div>
+  <h1>Surfly Host Switch Demo</h1>
+  <span class="header-tag">JS SDK · makeHost()</span>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR: Config + Controls -->
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Configuration</div>
+      <div class="card field-group">
+        <div>
+          <label>Widget Key</label>
+          <input type="text" id="widget-key" placeholder="e.g. 24d1414c71a94cbf9f205ed4fc4999b5" />
+        </div>
+        <div>
+          <label>Agent Name (optional)</label>
+          <input type="text" id="agent-name" placeholder="e.g. VidantaWorld Agent" />
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px;">
+          <input type="checkbox" id="auto-switch" checked style="accent-color:var(--host-color); width:15px; height:15px; cursor:pointer;" />
+          <label for="auto-switch" style="margin:0; cursor:pointer; color:var(--text); font-size:12px;">
+            Auto-switch host on <code style="color:var(--host-color)">participant_joined</code>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Session</div>
+      <div class="card field-group">
+        <div class="status-row" id="session-status">
+          <div class="status-dot" id="status-dot"></div>
+          <span class="status-text" id="status-text">Not started</span>
+        </div>
+        <button class="btn btn-primary" id="btn-start" onclick="startSession()">
+          ▶ Start Session (as Leader)
+        </button>
+        <button class="btn btn-danger" id="btn-end" onclick="endSession()" disabled>
+          ✕ End Session
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Follower Link</div>
+      <div class="card">
+        <label>Share this link with the agent to join</label>
+        <div class="link-row">
+          <input type="text" id="follower-link" placeholder="Start a session first..." readonly />
+          <button class="btn-copy" onclick="copyLink()" title="Copy link">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: auto; padding-top: 12px;">
+      <div class="section-label">Notes</div>
+      <div style="font-size: 11px; color: var(--text-muted); line-height: 1.7;">
+        <p>• <code style="color:var(--accent)">host_switching_allowed: true</code> is set on session create.</p>
+        <br/>
+        <p>• <code style="color:var(--warn)">participant_joined</code> fires when any participant joins — captures <code style="color:var(--accent)">clientIndex</code>.</p>
+        <br/>
+        <p>• <code style="color:var(--host-color)">makeHost(clientIndex)</code> is called on the leader's session object — only the current host can invoke it.</p>
+        <br/>
+        <p>• <code style="color:var(--warn)">host_changed</code> confirms the transfer with <code style="color:var(--accent)">event.to</code>, <code style="color:var(--accent)">event.gained</code>.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MAIN: Participants + Log -->
+  <div class="main">
+
+    <div class="top-row">
+      <div class="card">
+        <div class="section-label">Participants</div>
+        <div class="metric m-success" id="metric-participants">0</div>
+      </div>
+      <div class="card">
+        <div class="section-label">Current Host</div>
+        <div class="metric m-host" id="metric-host">—</div>
+      </div>
+      <div class="card">
+        <div class="section-label">Session ID</div>
+        <div class="metric m-accent" id="metric-session" style="font-size:13px; margin-top:8px; font-family:var(--mono); word-break:break-all;">—</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Active Participants</div>
+      <div class="card">
+        <div class="participants-list" id="participants-list">
+          <div class="empty-state">No participants yet — start a session and share the follower link.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex: 1;">
+      <div class="section-label">Event Log</div>
+      <div class="log-container" id="event-log">
+        <div class="log-entry">
+          <span class="log-time">--:--:--</span>
+          <span class="log-event">ready</span>
+          <span class="log-data">Page loaded. Configure widget key and start a session.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Surfly SDK loaded dynamically after widget key is entered -->
+<script>
+  // ─── State ────────────────────────────────────────────────────────────────
+  let surflySession = null;
+  let participants = {};      // clientIndex → { name, userData }
+  let currentHostIndex = 0;   // 0 = original leader
+
+  // ─── Logging ──────────────────────────────────────────────────────────────
+  function logEvent(eventName, data) {
+    const log = document.getElementById('event-log');
+    const now = new Date();
+    const ts = now.toTimeString().slice(0, 8);
+
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+
+    let evClass = 'log-event';
+    if (eventName === 'host_changed') evClass += ' ev-host';
+    else if (eventName.includes('joined') || eventName === 'session_started') evClass += ' ev-joined';
+    else if (eventName.includes('left') || eventName === 'session_ended') evClass += ' ev-left';
+    else if (eventName.includes('session')) evClass += ' ev-started';
+
+    entry.innerHTML = `
+      <span class="log-time">${ts}</span>
+      <span class="${evClass}">${eventName}</span>
+      <span class="log-data">${data ? JSON.stringify(data) : ''}</span>
+    `;
+
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // ─── UI helpers ───────────────────────────────────────────────────────────
+  function setStatus(text, state) {
+    const dot = document.getElementById('status-dot');
+    const label = document.getElementById('status-text');
+    dot.className = 'status-dot' + (state === 'active' ? ' active' : state === 'warn' ? ' warn' : '');
+    label.innerHTML = text;
+  }
+
+  function renderParticipants() {
+    const list = document.getElementById('participants-list');
+    const keys = Object.keys(participants);
+
+    document.getElementById('metric-participants').textContent = keys.length;
+    document.getElementById('metric-host').textContent =
+      currentHostIndex === 0 ? 'Leader (you)' : `Client #${currentHostIndex}`;
+
+    if (keys.length === 0) {
+      list.innerHTML = '<div class="empty-state">Waiting for participants to join...</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+
+    // Always render the leader (index 0)
+    const leaderRow = buildParticipantRow(0, { name: 'You (Leader)', isLeader: true });
+    list.appendChild(leaderRow);
+
+    keys.forEach(idx => {
+      const p = participants[idx];
+      const row = buildParticipantRow(parseInt(idx), p);
+      list.appendChild(row);
+    });
+  }
+
+  function buildParticipantRow(clientIndex, p) {
+    const isHost = clientIndex === currentHostIndex;
+    const row = document.createElement('div');
+    row.className = 'participant-row' + (isHost ? ' is-host' : '');
+
+    const initials = (p.name || `P${clientIndex}`).slice(0, 2).toUpperCase();
+    const displayName = p.name || `Participant ${clientIndex}`;
+
+    row.innerHTML = `
+      <div class="p-avatar ${isHost ? 'host-avatar' : ''}">
+        ${initials}
+      </div>
+      <div class="p-info">
+        <div class="p-name">${displayName}</div>
+        <div class="p-meta">clientIndex: ${clientIndex}</div>
+      </div>
+      ${isHost ? '<span class="host-badge">HOST</span>' : ''}
+      ${!isHost && clientIndex !== 0 && currentHostIndex === 0 
+          ? `<button class="btn btn-sm btn-give-host" onclick="makeHost(${clientIndex})">Give Host</button>` 
+          : ''}
+    `;
+    return row;
+  }
+
+  // ─── Host Switch ──────────────────────────────────────────────────────────
+  function makeHost(clientIndex) {
+    if (!surflySession) return;
+    logEvent('makeHost_called', { clientIndex });
+    surflySession.makeHost(clientIndex);
+  }
+
+  // ─── Session Lifecycle ────────────────────────────────────────────────────
+  function startSession() {
+    const widgetKey = document.getElementById('widget-key').value.trim();
+    if (!widgetKey) {
+      alert('Please enter your Surfly Widget Key first.');
+      return;
+    }
+
+    setStatus('Loading Surfly SDK...', 'warn');
+    document.getElementById('btn-start').disabled = true;
+
+    // Dynamically inject the Surfly SDK script
+    const script = document.createElement('script');
+    script.src = `https://surfly.com/surfly.js`;
+    script.onload = function () {
+      initSurfly(widgetKey);
+    };
+    script.onerror = function () {
+      setStatus('<strong>Failed to load Surfly SDK</strong>', '');
+      document.getElementById('btn-start').disabled = false;
+      logEvent('error', { reason: 'SDK script failed to load' });
+    };
+    document.head.appendChild(script);
+  }
+
+  function initSurfly(widgetKey) {
+    logEvent('surfly_init', { widget_key: widgetKey });
+
+    /* ── IMPLEMENTATION CORE ─────────────────────────────────────────────────
+     *
+     * Surfly.init() loads the session environment.
+     * host_switching_allowed: true must be set here — it's a session option
+     * that gates the makeHost() capability.
+     *
+     ────────────────────────────────────────────────────────────────────── */
+
+    Surfly.init({ widget_key: widgetKey }, function (initEvent) {
+      if (!initEvent.success) {
+        setStatus(`<strong>Init failed:</strong> ${initEvent.errorMsg || 'unknown'}`, '');
+        document.getElementById('btn-start').disabled = false;
+        logEvent('init_failed', initEvent);
+        return;
+      }
+
+      if (Surfly.isInsideSession) {
+        setStatus('Running <strong>inside</strong> a Surfly session', 'active');
+        logEvent('inside_session', { note: 'page is co-browsed, skipping new session start' });
+        return;
+      }
+
+      logEvent('init_success', { version: Surfly.version || 'unknown' });
+      setStatus('Surfly ready — creating session...', 'warn');
+
+      // ── Create the session with host_switching_allowed ──────────────────
+      surflySession = Surfly.session({
+        host_switching_allowed: true,
+        hide_session_ui: false,
+        block_until_agent_joins: false
+      });
+
+      // ── Event: session started ──────────────────────────────────────────
+      surflySession.on('session_started', function (sess) {
+        const followerLink = sess.followerLink;
+        document.getElementById('follower-link').value = followerLink || '';
+        document.getElementById('metric-session').textContent =
+          sess.formattedId || sess.sessionId || 'active';
+
+        setStatus('Session <strong>active</strong> — waiting for participants', 'active');
+        document.getElementById('btn-end').disabled = false;
+        renderParticipants();
+        logEvent('session_started', { followerLink });
+      });
+
+      // ── Event: participant joined ───────────────────────────────────────
+      // clientIndex is stored for makeHost() calls.
+      // With auto-switch enabled, we immediately promote the first joining
+      // participant to host — the pattern the Surfly engineer recommended:
+      // "change the host as soon as the participant joins"
+      surflySession.on('participant_joined', function (sess, event) {
+        const agentName = document.getElementById('agent-name').value.trim();
+        participants[event.clientIndex] = {
+          name: event.userData?.name || agentName || `Participant ${event.clientIndex}`,
+          userData: event.userData || {}
+        };
+        renderParticipants();
+        setStatus(`<strong>${Object.keys(participants).length}</strong> participant(s) in session`, 'active');
+        logEvent('participant_joined', { clientIndex: event.clientIndex, userData: event.userData });
+
+        // ── Auto host switch on join ──────────────────────────────────────
+        // Only fires if checkbox is checked AND we're still the original host.
+        // This is the "agent-side landing page" pattern: agent opens this page,
+        // starts session, customer joins — host flips to agent automatically.
+        const autoSwitch = document.getElementById('auto-switch').checked;
+        if (autoSwitch && currentHostIndex === 0) {
+          logEvent('auto_makeHost', { targetClientIndex: event.clientIndex, reason: 'participant_joined auto-trigger' });
+          sess.makeHost(event.clientIndex);
+        }
+      });
+
+      // ── Event: participant left ─────────────────────────────────────────
+      surflySession.on('participant_left', function (sess, event) {
+        delete participants[event.clientIndex];
+        if (currentHostIndex === event.clientIndex) currentHostIndex = 0;
+        renderParticipants();
+        logEvent('participant_left', { clientIndex: event.clientIndex });
+      });
+
+      // ── Event: host changed ─────────────────────────────────────────────
+      // This confirms makeHost() worked. event.to = new host clientIndex.
+      // event.gained = true means THIS window just became host.
+      surflySession.on('host_changed', function (sess, event) {
+        currentHostIndex = event.to;
+        renderParticipants();
+        logEvent('host_changed', {
+          to: event.to,
+          gained: event.gained,
+          myIndex: event.myIndex
+        });
+        setStatus(
+          event.gained
+            ? 'You <strong>received</strong> host rights'
+            : `Host transferred to client index <strong>${event.to}</strong>`,
+          'active'
+        );
+      });
+
+      // ── Event: session ended ────────────────────────────────────────────
+      surflySession.on('session_ended', function (sess, event) {
+        setStatus('Session ended', '');
+        participants = {};
+        currentHostIndex = 0;
+        document.getElementById('follower-link').value = '';
+        document.getElementById('metric-session').textContent = '—';
+        document.getElementById('btn-end').disabled = true;
+        document.getElementById('btn-start').disabled = false;
+        renderParticipants();
+        logEvent('session_ended', event);
+        surflySession = null;
+      });
+
+      // ── Start the session (leader window) ──────────────────────────────
+      surflySession.startLeader(null, {
+        name: 'Leader'
+      });
+    });
+  }
+
+  function endSession() {
+    if (surflySession) {
+      surflySession.end();
+    }
+  }
+
+  function copyLink() {
+    const link = document.getElementById('follower-link').value;
+    if (!link) return;
+    navigator.clipboard.writeText(link).then(() => {
+      const btn = document.querySelector('.btn-copy');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    });
+  }
+
+  // ── Initial render ────────────────────────────────────────────────────────
+  renderParticipants();
+</script>
+
+</body>
+</html>
