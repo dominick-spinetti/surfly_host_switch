@@ -330,6 +330,29 @@
     .log-event.ev-started { color: var(--warn); }
     .log-data { color: var(--text-muted); word-break: break-all; }
 
+    .log-entry.lvl-info .log-badge { background: var(--accent-dim); color: var(--accent); }
+    .log-entry.lvl-debug .log-badge { background: #1a1d26; color: var(--text-dim); }
+    .log-entry.lvl-success .log-badge { background: var(--success-dim); color: var(--success); }
+    .log-entry.lvl-warn .log-badge { background: var(--warn-dim); color: var(--warn); }
+    .log-entry.lvl-error .log-badge { background: var(--danger-dim); color: var(--danger); }
+    .log-entry.lvl-debug { opacity: 0.65; }
+    .log-entry.lvl-error { background: rgba(226,75,74,0.06); border-radius: 3px; }
+    .log-badge { font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; padding: 1px 5px; border-radius: 3px;
+      flex-shrink: 0; width: 44px; text-align: center; }
+    .log-msg { color: var(--text-muted); word-break: break-all; flex: 1; }
+    .log-msg.msg-debug { color: var(--text-dim); font-style: italic; }
+
+    .log-filter { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .filter-btn { font-size: 10px; font-family: var(--mono); padding: 3px 8px;
+      border-radius: 4px; border: 1px solid var(--border); background: var(--bg-input);
+      color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+    .filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .filter-btn.active.f-debug { border-color: var(--text-dim); color: var(--text-dim); background: #1a1d26; }
+    .filter-btn.active.f-success { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+    .filter-btn.active.f-warn { border-color: var(--warn); color: var(--warn); background: var(--warn-dim); }
+    .filter-btn.active.f-error { border-color: var(--danger); color: var(--danger); background: var(--danger-dim); }
+
     .top-row {
       display: flex;
       gap: 16px;
@@ -395,7 +418,10 @@
       <div class="card field-group">
         <div>
           <label>Widget Key</label>
-          <input type="text" id="widget-key" placeholder="e.g. 24d1414c71a94cbf9f205ed4fc4999b5" />
+          <select id="widget-key" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px 10px; color:var(--text); font-family:var(--mono); font-size:12px; outline:none; cursor:pointer;">
+            <option value="">— Select a widget key —</option>
+            <option value="d01c1280d1f64e04b6303b49802e209c">VidantaWorld Demo · d01c1280...</option>
+          </select>
         </div>
         <div>
           <label>Agent Name (optional)</label>
@@ -480,14 +506,18 @@
     </div>
 
     <div style="flex: 1;">
-      <div class="section-label">Event Log</div>
-      <div class="log-container" id="event-log">
-        <div class="log-entry">
-          <span class="log-time">--:--:--</span>
-          <span class="log-event">ready</span>
-          <span class="log-data">Page loaded. Configure widget key and start a session.</span>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <div class="section-label" style="margin:0;">Event Log</div>
+        <div class="log-filter">
+          <button class="filter-btn active f-debug" onclick="toggleFilter('debug', this)">DEBUG</button>
+          <button class="filter-btn active f-info" onclick="toggleFilter('info', this)">INFO</button>
+          <button class="filter-btn active f-success" onclick="toggleFilter('success', this)">OK</button>
+          <button class="filter-btn active f-warn" onclick="toggleFilter('warn', this)">WARN</button>
+          <button class="filter-btn active f-error" onclick="toggleFilter('error', this)">ERROR</button>
+          <button class="filter-btn" onclick="clearLog()" style="color:var(--danger);border-color:var(--danger);">Clear</button>
         </div>
       </div>
+      <div class="log-container" id="event-log"></div>
     </div>
 
     <!-- Surfly session embeds here. startLeader('#surfly-frame') keeps Surfly
@@ -509,28 +539,54 @@
   let currentHostIndex = 0;   // 0 = original leader
 
   // ─── Logging ──────────────────────────────────────────────────────────────
-  function logEvent(eventName, data) {
-    const log = document.getElementById('event-log');
+  const activeFilters = new Set(['debug','info','success','warn','error']);
+
+  function toggleFilter(level, btn) {
+    if (activeFilters.has(level)) {
+      activeFilters.delete(level);
+      btn.classList.remove('active');
+    } else {
+      activeFilters.add(level);
+      btn.classList.add('active');
+    }
+    document.querySelectorAll('#event-log .log-entry').forEach(el => {
+      el.style.display = activeFilters.has(el.dataset.level) ? 'flex' : 'none';
+    });
+  }
+
+  function clearLog() {
+    document.getElementById('event-log').innerHTML = '';
+  }
+
+  // log(msg, level) — levels: debug | info | success | warn | error
+  function log(msg, level = 'info') {
+    const container = document.getElementById('event-log');
     const now = new Date();
     const ts = now.toTimeString().slice(0, 8);
 
     const entry = document.createElement('div');
-    entry.className = 'log-entry';
-
-    let evClass = 'log-event';
-    if (eventName === 'host_changed') evClass += ' ev-host';
-    else if (eventName.includes('joined') || eventName === 'session_started') evClass += ' ev-joined';
-    else if (eventName.includes('left') || eventName === 'session_ended') evClass += ' ev-left';
-    else if (eventName.includes('session')) evClass += ' ev-started';
+    entry.className = `log-entry lvl-${level}`;
+    entry.dataset.level = level;
+    entry.style.display = activeFilters.has(level) ? 'flex' : 'none';
 
     entry.innerHTML = `
       <span class="log-time">${ts}</span>
-      <span class="${evClass}">${eventName}</span>
-      <span class="log-data">${data ? JSON.stringify(data) : ''}</span>
+      <span class="log-badge">${level}</span>
+      <span class="log-msg ${level === 'debug' ? 'msg-debug' : ''}">${msg}</span>
     `;
 
-    log.appendChild(entry);
-    log.scrollTop = log.scrollHeight;
+    container.appendChild(entry);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // Keep logEvent as thin alias for backward compat (event name + data object)
+  function logEvent(eventName, data) {
+    const level = eventName.includes('error') || eventName.includes('failed')
+      ? 'error'
+      : eventName.includes('ended') || eventName.includes('left') ? 'warn'
+      : eventName.includes('started') || eventName.includes('success') || eventName === 'host_changed' ? 'success'
+      : 'info';
+    log(`${eventName}${data ? ' · ' + JSON.stringify(data) : ''}`, level);
   }
 
   // ─── UI helpers ───────────────────────────────────────────────────────────
@@ -609,89 +665,124 @@
     setStatus('Loading Surfly SDK...', 'warn');
     document.getElementById('btn-start').disabled = true;
 
-    // surfly.js does NOT define window.Surfly on its own — it requires a stub
-    // object to already exist in window before the script loads. The official
-    // Surfly snippet sets up that stub first, then injects the script.
-    // Skipping this step causes: "Uncaught ReferenceError: Surfly is not defined"
-    // even though the script.onload fired successfully.
+    log('STEP 1 — Building Surfly stub object in window', 'info');
+    log(`window.Surfly before stub: ${typeof window.Surfly}`, 'debug');
 
-    // Step 1: set up the Surfly stub (mirrors the official snippet)
+    // surfly.js augments a pre-existing stub rather than creating window.Surfly
+    // from scratch. Without this stub, onload fires but Surfly is still undefined.
     window.Surfly = window.Surfly || {
       init:    function () { window.Surfly.q = arguments; },
       on:      function () { window.Surfly.e = (window.Surfly.e || []).concat([arguments]); },
       session: function () { window.Surfly.s = (window.Surfly.s || []).concat([arguments]); }
     };
+    log(`window.Surfly after stub: ${typeof window.Surfly} — keys: [${Object.keys(window.Surfly).join(', ')}]`, 'debug');
 
-    // Step 2: inject surfly.js — it will augment the stub above
+    log('STEP 2 — Injecting surfly.js script tag', 'info');
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://surfly.com/surfly.js';
+
     script.onload = function () {
-      // By now Surfly is the real object (stub replaced by SDK)
+      log('STEP 2 COMPLETE — surfly.js onload fired', 'success');
+      log(`window.Surfly after load: ${typeof window.Surfly} — keys: [${Object.keys(window.Surfly).join(', ')}]`, 'debug');
+      log(`Surfly.version: ${window.Surfly?.version || 'not exposed'}`, 'debug');
       initSurfly(widgetKey);
     };
-    script.onerror = function () {
+
+    script.onerror = function (e) {
+      log('STEP 2 FAILED — surfly.js script failed to load (network/CSP error)', 'error');
       setStatus('<strong>Failed to load Surfly SDK</strong>', '');
       document.getElementById('btn-start').disabled = false;
-      logEvent('error', { reason: 'surfly.js script failed to load' });
     };
+
     document.head.appendChild(script);
+    log(`surfly.js script tag appended to <head> — src: ${script.src}`, 'debug');
   }
 
   function initSurfly(widgetKey) {
-    logEvent('surfly_init', { widget_key: widgetKey });
-
-    /* ── IMPLEMENTATION CORE ─────────────────────────────────────────────────
-     *
-     * Surfly.init() loads the session environment.
-     * host_switching_allowed: true must be set here — it's a session option
-     * that gates the makeHost() capability.
-     *
-     ────────────────────────────────────────────────────────────────────── */
+    log('STEP 3 — Calling Surfly.init()', 'info');
+    log(`widget_key: ${widgetKey}`, 'debug');
+    log(`Surfly object type: ${typeof window.Surfly}`, 'debug');
+    log(`Surfly.init type: ${typeof window.Surfly?.init}`, 'debug');
 
     Surfly.init({ widget_key: widgetKey }, function (initEvent) {
+      log('STEP 3 CALLBACK — Surfly.init() callback fired', 'info');
+      log(`Raw initEvent: ${JSON.stringify(initEvent)}`, 'debug');
+      log(`initEvent.success: ${initEvent.success}`, initEvent.success ? 'success' : 'error');
+
       if (!initEvent.success) {
-        setStatus(`<strong>Init failed:</strong> ${initEvent.errorMsg || 'unknown'}`, '');
+        const errMsg = initEvent.errorMsg || initEvent.error || JSON.stringify(initEvent);
+        log(`Init failed — ${errMsg}`, 'error');
+        setStatus(`<strong>Init failed:</strong> ${errMsg}`, '');
         document.getElementById('btn-start').disabled = false;
-        logEvent('init_failed', initEvent);
         return;
       }
 
+      log(`Surfly.isInsideSession: ${Surfly.isInsideSession}`, 'debug');
       if (Surfly.isInsideSession) {
+        log('Page is already inside a Surfly session — skipping new session start', 'warn');
         setStatus('Running <strong>inside</strong> a Surfly session', 'active');
-        logEvent('inside_session', { note: 'page is co-browsed, skipping new session start' });
         return;
       }
 
-      logEvent('init_success', { version: Surfly.version || 'unknown' });
-      setStatus('Surfly ready — creating session...', 'warn');
-
-      // ── Create the session with host_switching_allowed ──────────────────
-      surflySession = Surfly.session({
+      log('STEP 4 — Calling Surfly.session() with options', 'info');
+      const sessionOptions = {
         host_switching_allowed: true,
         hide_session_ui: false,
         block_until_agent_joins: false
+      };
+      log(`Session options: ${JSON.stringify(sessionOptions)}`, 'debug');
+
+      surflySession = Surfly.session(sessionOptions);
+      log(`Session object created — type: ${typeof surflySession}`, 'debug');
+      log(`Session object keys: [${Object.keys(surflySession || {}).join(', ')}]`, 'debug');
+
+      // ── Register ALL documented session events for full visibility ─────
+
+      surflySession.on('session_created', function (sess) {
+        log('EVENT session_created — session object exists in Surfly system', 'success');
+        log(`  sess.sessionId: ${sess.sessionId}`, 'debug');
+        log(`  sess.formattedId: ${sess.formattedId}`, 'debug');
+        log(`  sess.followerLink: ${sess.followerLink}`, 'debug');
+        log(`  sess.leaderLink: ${sess.leaderLink}`, 'debug');
       });
 
-      // ── Event: session started ──────────────────────────────────────────
+      surflySession.on('session_queued', function (sess) {
+        log('EVENT session_queued — session placed in queue, PIN generated', 'info');
+        log(`  sess.pin: ${sess.pin}`, 'debug');
+      });
+
       surflySession.on('session_started', function (sess) {
+        log('EVENT session_started — session window loaded, co-browse active', 'success');
+        log(`  sess.followerLink: ${sess.followerLink}`, 'debug');
+        log(`  sess.leaderLink: ${sess.leaderLink}`, 'debug');
+        log(`  sess.sessionId: ${sess.sessionId}`, 'debug');
+        log(`  sess.formattedId: ${sess.formattedId}`, 'debug');
+
         const followerLink = sess.followerLink;
-        document.getElementById('follower-link').value = followerLink || '';
+        document.getElementById('follower-link').value = followerLink || '(not available)';
         document.getElementById('metric-session').textContent =
           sess.formattedId || sess.sessionId || 'active';
+
+        if (!followerLink) {
+          log('  WARNING: followerLink is empty/undefined on session_started', 'warn');
+        }
 
         setStatus('Session <strong>active</strong> — waiting for participants', 'active');
         document.getElementById('btn-end').disabled = false;
         renderParticipants();
-        logEvent('session_started', { followerLink });
       });
 
-      // ── Event: participant joined ───────────────────────────────────────
-      // clientIndex is stored for makeHost() calls.
-      // With auto-switch enabled, we immediately promote the first joining
-      // participant to host — the pattern the Surfly engineer recommended:
-      // "change the host as soon as the participant joins"
+      surflySession.on('session_loaded', function (sess) {
+        log('EVENT session_loaded — DOM inside session fully loaded', 'success');
+      });
+
       surflySession.on('participant_joined', function (sess, event) {
+        log('EVENT participant_joined', 'success');
+        log(`  clientIndex: ${event.clientIndex}`, 'debug');
+        log(`  userData: ${JSON.stringify(event.userData)}`, 'debug');
+        log(`  Full event: ${JSON.stringify(event)}`, 'debug');
+
         const agentName = document.getElementById('agent-name').value.trim();
         participants[event.clientIndex] = {
           name: event.userData?.name || agentName || `Participant ${event.clientIndex}`,
@@ -699,38 +790,59 @@
         };
         renderParticipants();
         setStatus(`<strong>${Object.keys(participants).length}</strong> participant(s) in session`, 'active');
-        logEvent('participant_joined', { clientIndex: event.clientIndex, userData: event.userData });
 
-        // ── Auto host switch on join ──────────────────────────────────────
-        // Only fires if checkbox is checked AND we're still the original host.
-        // This is the "agent-side landing page" pattern: agent opens this page,
-        // starts session, customer joins — host flips to agent automatically.
         const autoSwitch = document.getElementById('auto-switch').checked;
+        log(`  auto-switch enabled: ${autoSwitch}, currentHostIndex: ${currentHostIndex}`, 'debug');
+
         if (autoSwitch && currentHostIndex === 0) {
-          logEvent('auto_makeHost', { targetClientIndex: event.clientIndex, reason: 'participant_joined auto-trigger' });
-          sess.makeHost(event.clientIndex);
+          log(`  Calling makeHost(${event.clientIndex}) — auto-trigger on participant_joined`, 'info');
+          log(`  surflySession.makeHost type: ${typeof sess.makeHost}`, 'debug');
+          try {
+            sess.makeHost(event.clientIndex);
+            log(`  makeHost(${event.clientIndex}) called successfully`, 'success');
+          } catch (e) {
+            log(`  makeHost() threw: ${e.message}`, 'error');
+          }
+        } else {
+          log(`  Auto-switch skipped — autoSwitch=${autoSwitch}, currentHostIndex=${currentHostIndex}`, 'warn');
         }
       });
 
-      // ── Event: participant left ─────────────────────────────────────────
-      surflySession.on('participant_left', function (sess, event) {
-        delete participants[event.clientIndex];
-        if (currentHostIndex === event.clientIndex) currentHostIndex = 0;
-        renderParticipants();
-        logEvent('participant_left', { clientIndex: event.clientIndex });
+      surflySession.on('viewer_joined', function (sess, event) {
+        log('EVENT viewer_joined (follower-only join variant)', 'info');
+        log(`  count: ${event.count}, clientIndex: ${event.clientIndex}`, 'debug');
       });
 
-      // ── Event: host changed ─────────────────────────────────────────────
-      // This confirms makeHost() worked. event.to = new host clientIndex.
-      // event.gained = true means THIS window just became host.
+      surflySession.on('participant_left', function (sess, event) {
+        log('EVENT participant_left', 'warn');
+        log(`  clientIndex: ${event.clientIndex}`, 'debug');
+        delete participants[event.clientIndex];
+        if (currentHostIndex === event.clientIndex) {
+          log(`  Host left — resetting currentHostIndex to 0`, 'warn');
+          currentHostIndex = 0;
+        }
+        renderParticipants();
+      });
+
+      surflySession.on('viewer_left', function (sess, event) {
+        log('EVENT viewer_left', 'warn');
+        log(`  count: ${event.count}, clientIndex: ${event.clientIndex}`, 'debug');
+      });
+
+      surflySession.on('host_rights_requested', function (sess, event) {
+        log('EVENT host_rights_requested', 'info');
+        log(`  clientIndex requesting host: ${event.clientIndex}`, 'debug');
+      });
+
       surflySession.on('host_changed', function (sess, event) {
+        log('EVENT host_changed — host transfer confirmed', 'success');
+        log(`  event.to (new host index): ${event.to}`, 'debug');
+        log(`  event.gained (did THIS window gain host): ${event.gained}`, 'debug');
+        log(`  event.myIndex (this user index): ${event.myIndex}`, 'debug');
+        log(`  Full event: ${JSON.stringify(event)}`, 'debug');
+
         currentHostIndex = event.to;
         renderParticipants();
-        logEvent('host_changed', {
-          to: event.to,
-          gained: event.gained,
-          myIndex: event.myIndex
-        });
         setStatus(
           event.gained
             ? 'You <strong>received</strong> host rights'
@@ -739,8 +851,23 @@
         );
       });
 
-      // ── Event: session ended ────────────────────────────────────────────
+      surflySession.on('error', function (sess, event) {
+        log('EVENT error — session-level error', 'error');
+        log(`  reason: ${event.reason}`, 'error');
+        log(`  details: ${event.details || 'none'}`, 'error');
+        log(`  Full event: ${JSON.stringify(event)}`, 'debug');
+        setStatus(`<strong>Session error:</strong> ${event.reason}`, '');
+      });
+
+      surflySession.on('tab_relocated', function (sess, event) {
+        log('EVENT tab_relocated', 'info');
+        log(`  url: ${event.url}, ssid: ${event.ssid}`, 'debug');
+      });
+
       surflySession.on('session_ended', function (sess, event) {
+        log('EVENT session_ended', 'warn');
+        log(`  final_location: ${event?.final_location || 'n/a'}`, 'debug');
+        log(`  Full event: ${JSON.stringify(event)}`, 'debug');
         setStatus('Session ended', '');
         participants = {};
         currentHostIndex = 0;
@@ -748,20 +875,27 @@
         document.getElementById('metric-session').textContent = '—';
         document.getElementById('btn-end').disabled = true;
         document.getElementById('btn-start').disabled = false;
+        document.getElementById('surfly-frame-wrap').style.display = 'none';
         renderParticipants();
-        logEvent('session_ended', event);
         surflySession = null;
       });
 
-      // ── Start the session (leader window) ──────────────────────────────
-      // IMPORTANT: pass '#surfly-frame' as the target element selector.
-      // Without this, startLeader() replaces the entire page with the Surfly
-      // session, navigating away and destroying all our event listeners.
-      // The selector embeds the session iframe inside our container div instead.
+      // ── startLeader ────────────────────────────────────────────────────
+      log('STEP 5 — Calling startLeader("#surfly-frame")', 'info');
+      const frameEl = document.getElementById('surfly-frame');
+      log(`  #surfly-frame element exists: ${!!frameEl}`, 'debug');
+      if (frameEl) {
+        log(`  #surfly-frame dimensions: ${frameEl.offsetWidth}x${frameEl.offsetHeight}px`, 'debug');
+      }
       document.getElementById('surfly-frame-wrap').style.display = 'block';
-      surflySession.startLeader('#surfly-frame', {
-        name: 'Leader'
-      });
+
+      log(`  startLeader type: ${typeof surflySession.startLeader}`, 'debug');
+      try {
+        surflySession.startLeader('#surfly-frame', { name: 'Leader' });
+        log('  startLeader() called — waiting for session_started event', 'info');
+      } catch (e) {
+        log(`  startLeader() threw immediately: ${e.message}`, 'error');
+      }
     });
   }
 
@@ -783,6 +917,8 @@
 
   // ── Initial render ────────────────────────────────────────────────────────
   renderParticipants();
+  log('Page loaded — select a widget key and click Start Session', 'info');
+  log('Debug entries show internal state at each step — use filters to focus', 'debug');
 </script>
 
 </body>
