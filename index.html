@@ -239,12 +239,31 @@
         console.log('[Surfly] viewer_joined — clientIndex:', event.clientIndex, '— waiting for participant_joined before makeHost');
       });
 
-      // participant_joined fires after viewer_joined with full userData including
-      // agent_token — this is the correct event to call makeHost from.
+      // participant_joined fires after viewer_joined with full userData.
+      // Instead of trusting event.clientIndex directly, we call getParticipants()
+      // to get the authoritative internal client_index from Surfly's own list.
+      // This resolves any mismatch between what the event reports and what
+      // makeHost's internal participants map actually contains.
       session.on('participant_joined', function (sess, event) {
         const hasToken = !!(event.userData && event.userData.agent_token);
-        console.log('[Surfly] participant_joined — clientIndex:', event.clientIndex, 'agent_token present:', hasToken, 'userData:', event.userData);
-        transferHost(event.clientIndex);
+        console.log('[Surfly] participant_joined — event.clientIndex:', event.clientIndex, 'agent_token present:', hasToken);
+
+        session.getParticipants().then(function (participants) {
+          console.log('[Surfly] getParticipants() result:', JSON.stringify(participants));
+
+          // Find the non-self participant (the agent)
+          const agent = participants.find(function (p) { return !p.self; });
+          if (agent) {
+            console.log('[Surfly] Agent found in getParticipants — client_index:', agent.client_index, 'name:', agent.name);
+            transferHost(agent.client_index);
+          } else {
+            console.warn('[Surfly] No non-self participant found in getParticipants — falling back to event.clientIndex:', event.clientIndex);
+            transferHost(event.clientIndex);
+          }
+        }).catch(function (err) {
+          console.error('[Surfly] getParticipants() error:', err);
+          transferHost(event.clientIndex);
+        });
       });
 
       // Confirm transfer
