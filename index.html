@@ -601,16 +601,31 @@
     setStatus('Loading Surfly SDK...', 'warn');
     document.getElementById('btn-start').disabled = true;
 
-    // Dynamically inject the Surfly SDK script
+    // surfly.js does NOT define window.Surfly on its own — it requires a stub
+    // object to already exist in window before the script loads. The official
+    // Surfly snippet sets up that stub first, then injects the script.
+    // Skipping this step causes: "Uncaught ReferenceError: Surfly is not defined"
+    // even though the script.onload fired successfully.
+
+    // Step 1: set up the Surfly stub (mirrors the official snippet)
+    window.Surfly = window.Surfly || {
+      init:    function () { window.Surfly.q = arguments; },
+      on:      function () { window.Surfly.e = (window.Surfly.e || []).concat([arguments]); },
+      session: function () { window.Surfly.s = (window.Surfly.s || []).concat([arguments]); }
+    };
+
+    // Step 2: inject surfly.js — it will augment the stub above
     const script = document.createElement('script');
-    script.src = `https://surfly.com/surfly.js`;
+    script.async = true;
+    script.src = 'https://surfly.com/surfly.js';
     script.onload = function () {
+      // By now Surfly is the real object (stub replaced by SDK)
       initSurfly(widgetKey);
     };
     script.onerror = function () {
       setStatus('<strong>Failed to load Surfly SDK</strong>', '');
       document.getElementById('btn-start').disabled = false;
-      logEvent('error', { reason: 'SDK script failed to load' });
+      logEvent('error', { reason: 'surfly.js script failed to load' });
     };
     document.head.appendChild(script);
   }
