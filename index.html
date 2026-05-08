@@ -209,20 +209,19 @@
         // authenticated agent (agent_token present in userData).
         // The UI shows "participant 2" but the JS API is 0-indexed:
         // leader = 0, first joiner = 1.
-        const hasToken = !!(event && event.userData && event.userData.agent_token);
-        console.log('[Surfly] agent_token present:', hasToken, '— clientIndex:', clientIndex);
-
-        setTimeout(function () {
-          try {
-            console.log('[Surfly] calling makeHost(' + clientIndex + ')');
-            session.makeHost(clientIndex);
-            console.log('[Surfly] makeHost(' + clientIndex + ') — no immediate error thrown');
-          } catch (err) {
-            console.error('[Surfly] makeHost error:', err.message);
-            setStatus('Transfer error: ' + err.message, 'error');
-            hostTransferred = false;
-          }
-        }, 800);
+        // Try makeHost synchronously first (no delay) — if the participant
+        // is in the list at participant_joined time, this should work.
+        // Previous tests used a delay which may have been letting the
+        // participant fall out of the internal participants map.
+        try {
+          console.log('[Surfly] calling makeHost(' + clientIndex + ') — synchronous, no delay');
+          session.makeHost(clientIndex);
+          console.log('[Surfly] makeHost(' + clientIndex + ') — no immediate error thrown');
+        } catch (err) {
+          console.error('[Surfly] makeHost synchronous error:', err.message);
+          setStatus('Transfer error: ' + err.message, 'error');
+          hostTransferred = false;
+        }
       }
 
       // viewer_joined fires BEFORE participant_joined and has no agent_token
