@@ -110,25 +110,33 @@
 </head>
 <body>
 
-<div class="card">
-  <div>
-    <h1>Start Co-Browse Session</h1>
-  </div>
+<!-- Surfly session lives in this iframe. Keeping it outside the session
+     context is critical — makeHost() is explicitly "not available inside
+     a session", so the outer page must remain unco-browsed. -->
+<iframe id="surfly-frame" style="display:none; position:fixed; inset:0; width:100%; height:100%; border:none; z-index:10;"></iframe>
 
-  <p>Click the button below to start a session. Share the PIN with your agent to let them join.</p>
-
-  <button class="btn" id="btn-start" onclick="launch()">Start Session</button>
-
-  <div class="pin-block" id="pin-block">
-    <div class="pin-label">Share this PIN with your agent</div>
-    <div class="pin-digits" id="pin-display">—</div>
-    <div class="pin-instruction">
-      Read this PIN to your agent.<br/>
-      They will join and take over <strong>automatically</strong>.
+<!-- Overlay shown before and during session start -->
+<div id="overlay" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#0f1117; z-index:20;">
+  <div class="card">
+    <div>
+      <h1>Start Co-Browse Session</h1>
     </div>
-  </div>
 
-  <div class="status" id="status"></div>
+    <p>Click the button below to start a session. Share the PIN with your agent to let them join.</p>
+
+    <button class="btn" id="btn-start" onclick="launch()">Start Session</button>
+
+    <div class="pin-block" id="pin-block">
+      <div class="pin-label">Share this PIN with your agent</div>
+      <div class="pin-digits" id="pin-display">—</div>
+      <div class="pin-instruction">
+        Read this PIN to your agent.<br/>
+        They will join and take over <strong>automatically</strong>.
+      </div>
+    </div>
+
+    <div class="status" id="status"></div>
+  </div>
 </div>
 
 <script>
@@ -243,13 +251,17 @@
       session.on('host_changed', function (sess, event) {
         console.log('[Surfly] host_changed — to:', event.to, 'gained:', event.gained, 'myIndex:', event.myIndex);
         if (!event.gained) {
+          // Host successfully transferred to agent — hide the overlay
+          // so the guest sees only the fullscreen iframe session
+          document.getElementById('overlay').style.display = 'none';
           setStatus('Agent is now in control.', 'host');
-          document.querySelector('.pin-instruction').textContent = 'Your agent has joined and is now in control.';
         }
       });
 
       session.on('session_ended', function () {
         setStatus('Session ended.');
+        document.getElementById('surfly-frame').style.display = 'none';
+        document.getElementById('overlay').style.display = 'flex';
         document.getElementById('pin-block').classList.remove('visible');
         document.getElementById('btn-start').style.display = 'block';
         document.getElementById('btn-start').disabled = false;
@@ -262,7 +274,12 @@
         document.getElementById('btn-start').disabled = false;
       });
 
-      session.startLeader();
+      // Use iframe container — this keeps the outer page OUTSIDE the session.
+      // makeHost() is "not available inside a session" per Surfly docs,
+      // so the outer JS must never become co-browsed. An iframe achieves this.
+      const frame = document.getElementById('surfly-frame');
+      frame.style.display = 'block';
+      session.startLeader('#surfly-frame');
     });
   }
 </script>
