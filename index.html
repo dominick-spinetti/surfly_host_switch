@@ -490,6 +490,14 @@
       </div>
     </div>
 
+    <!-- Surfly session embeds here. startLeader('#surfly-frame') keeps Surfly
+         inside the page instead of replacing it, which prevents the blank-page
+         navigation and the subsequent start_failed on reload. -->
+    <div id="surfly-frame-wrap" style="display:none;">
+      <div class="section-label">Cobrowse Session</div>
+      <div id="surfly-frame" style="width:100%; height:500px; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--bg-input);"></div>
+    </div>
+
   </div>
 </div>
 
@@ -746,7 +754,12 @@
       });
 
       // ── Start the session (leader window) ──────────────────────────────
-      surflySession.startLeader(null, {
+      // IMPORTANT: pass '#surfly-frame' as the target element selector.
+      // Without this, startLeader() replaces the entire page with the Surfly
+      // session, navigating away and destroying all our event listeners.
+      // The selector embeds the session iframe inside our container div instead.
+      document.getElementById('surfly-frame-wrap').style.display = 'block';
+      surflySession.startLeader('#surfly-frame', {
         name: 'Leader'
       });
     });
